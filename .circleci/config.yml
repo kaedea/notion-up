@@ -65,4 +65,6 @@ jobs:
           name: "Publish Release on GitHub"
           command: |
             VERSION=$(date '+%Y-%m-%d')
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/
+            cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build"
+            echo "exe: $cmd"
+            $("$cmd")
