@@ -29,22 +29,22 @@ jobs:
           at: ~/project-export
       - checkout
       - run:
-          name: pip install
+          name: Python pip install
           command: |
             pip install requests
       - run:
-          name: Run tests
+          name: Run action
           command: |
             PYTHONPATH=./ python main.py \
                 --action "export" \
-                --output "~/project-export/build"
+                --output "build"
       - run:
           name: Dump outputs
           command: |
-            echo "Exported zip file:\n" |
-            ls -l "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
+            echo "Exported zip file:\n"
+            pwd && ls -l && ls -l ~/project-export/build
             echo "\n---\n"
-            pwd && ls -l
+            ls -l "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
       - persist_to_workspace:
           root: ~/project-export
           paths:
