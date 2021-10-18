@@ -7,15 +7,23 @@ from notion_backup import NotionUp
 def start():
     print("Run with configs:")
     print("config = {}".format(Config.to_string()))
-    # get backup file
-    zips = NotionUp.backup()
-    # unzip
-    NotionUp.unzip(zips)
-    # archive files
+    if Config.action() not in ['all', 'export', 'unzip']:
+        raise Exception('unknown action: {}'.format(Config.action()))
+
+    if Config.action() in ['all', 'export']:
+        # get backup file
+        zips = NotionUp.backup()
+        Config.set_zip_files(zips)
+
+    if Config.action() in ['all', 'unzip']:
+        # unzip
+        NotionUp.unzip()
+        # archive files
 
 
 # Cli cmd example:
 # python main.py \
+#     --action <acton>
 #     --token_v2 <token_v2>
 # or
 # python main.py \

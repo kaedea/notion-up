@@ -1,5 +1,4 @@
 import json
-import os
 import shutil
 import time
 import zipfile
@@ -59,7 +58,7 @@ class NotionUp:
             task = next(t for t in tasks if t['id'] == taskId)
             if task['state'] == 'success':
                 url = task['status']['exportURL']
-                print(url)
+                print('\n' + url)
                 break
             else:
                 print('.', end="", flush=True)
@@ -114,8 +113,8 @@ class NotionUp:
             print(f'{filePath} unzip fail,{str(e)}')
 
     @staticmethod
-    def unzip(zipFiles):
-        for file in zipFiles:
+    def unzip():
+        for file in Config.zip_files():
             print('unzip exported zip: {}'.format(file))
             NotionUp.unzipFile(file)
 

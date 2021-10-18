@@ -14,11 +14,14 @@ DEFAULT_ARGS = {
     'notion_locale': 'en',
     'notion_timezone': 'Asia/Shanghai',
     'token_v2': None,
+    'action': "all",  # all | export | unzip
+    'zip_files': [],
 }
 SYS_ENV_MAP = {
     'token_v2': "NOTION_TOKEN_V2",
 }
 REQUIRED_ARGS = [
+    'action',
     'token_v2',
 ]
 REQUIRED_MODULES = [
