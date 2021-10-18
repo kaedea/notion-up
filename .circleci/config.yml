@@ -1,0 +1,68 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@1.2
+
+workflows:
+  backup-notion:
+    jobs:
+      - export-workspace:
+          branch_build: master
+          filters:
+            branches:
+              only: feautre/circleci
+      - publish-github-release:
+          requires:
+            - export-workspace
+
+jobs:
+  export-workspace:
+    parameters:
+      branch_build:
+        type: string
+        default: master
+    working_directory: ~/project-export
+    docker:
+      - image: cimg/python:3.8
+    steps:
+      - attach_workspace:
+          at: ~/project-export
+      - checkout
+      - run:
+          name: pip install
+          command: |
+            pip install request
+      - run:
+          name: Run tests
+          command: |
+            PYTHONPATH=./ python main.py \
+                --action "exported" \
+                --output "~/project-export/build"
+      - run:
+          name: Dump outputs
+          command: |
+            echo "Exported zip file:\n" |
+            ls -l "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
+            echo "\n---\n"
+            pwd && ls -l
+      - persist_to_workspace:
+          root: ~/project-export
+          paths:
+            - ./build
+
+  publish-github-release:
+    parameters:
+      branch_build:
+        type: string
+        default: master
+    working_directory: ~/project-github-release
+    docker:
+      - image: cibuilds/github:0.10
+    steps:
+      - attach_workspace:
+          at: ~/project-export
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            VERSION=$(date '+%Y-%m-%d')
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/
