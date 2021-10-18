@@ -64,8 +64,10 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
-            pwd && ls -l
+            pwd
+            ls -l
             ls -l ~/project-export
+            ls -l ~/project-export/build
             VERSION=$(date '+%Y-%m-%d')
             cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/"
             echo "exe: $cmd"
