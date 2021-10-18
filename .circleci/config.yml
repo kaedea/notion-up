@@ -36,7 +36,7 @@ jobs:
           name: Run tests
           command: |
             PYTHONPATH=./ python main.py \
-                --action "exported" \
+                --action "export" \
                 --output "~/project-export/build"
       - run:
           name: Dump outputs
