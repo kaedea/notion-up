@@ -31,7 +31,7 @@ jobs:
       - run:
           name: pip install
           command: |
-            pip install request
+            # pip install request
       - run:
           name: Run tests
           command: |
