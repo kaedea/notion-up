@@ -1,0 +1,7 @@
+﻿Name,Example,Desc,Required
+debuggable,true or false,Debug mode flag,No
+token_v2,,notion_token_v2,Yes
+blog_url,https://www.notion.so/kaedea/NotionDown-Posts-Template-f77f3322915a4ab48caa0f2e76e9d733,Notion public posts url needed to read you notion pages,Yes
+channels,default|GitHub|Hexo,NotionDown Channels,No
+page_titles,Title1|Title2|Title3|...,Pages that want to be handled. Null or 'all' for all pages.,No
+config_file,.config_file.json,Json file with configured args,No
