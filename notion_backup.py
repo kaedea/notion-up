@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List
 
 import requests
+from slugify import slugify
 
 from utils.config import Config
 from utils.utils import FileUtils
@@ -91,7 +92,7 @@ class NotionUp:
             taskId = NotionUp.requestPost('enqueueTask', NotionUp.exportTask(spaceId)).get('taskId')
             # get exported file url and download
             url = NotionUp.waitForExportedUrl(taskId)
-            filename = f'{spaceName}-{spaceId}.zip'
+            filename = slugify(f'{spaceName}-{spaceId}.zip')
             print('download exported zip: {}, {}'.format(url, filename))
             filePath = NotionUp.downloadFile(url, filename)
             zips.append(filePath)
