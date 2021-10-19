@@ -37,6 +37,7 @@ jobs:
           name: Run action
           command: |
             PYTHONPATH=./ python main.py \
+                --token_v2 ${NOTION_TOKEN_V2} \
                 --action "all" \
                 --output "build/exported"
       - run:
@@ -60,6 +61,9 @@ jobs:
       - run:
           name: Push unzip files to dist
           command: |
+            # skip push for test
+            exit 0
+
             git clone -b feature/backups "https://${GH_TOKEN}@github.com/kaedea/notion-up.git" deploy
             cd deploy
             git config user.name "Kaede"
@@ -93,7 +97,10 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
+            # skip github-release for test
+            exit 0
+
             pwd && ls -l && ls -l ~/project-export/build/archives
             VERSION=$(date '+%Y-%m-%d')
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/archives
+            ghr -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/archives
      
