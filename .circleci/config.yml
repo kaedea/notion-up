@@ -76,7 +76,7 @@ jobs:
             # cd ~/project-export && pwd && ls -l
             # go get github.com/tcnksm/ghr
             go get github.com/aktau/github-release
-            npm install github-release-notes -g
+            npm install --prefix=$HOME/.local --global github-release-notes
 
             VERSION=$(date '+%Y-%m-%d')
             github-release upload --user $CIRCLE_PROJECT_USERNAME --repo $CIRCLE_PROJECT_REPONAME --tag ${VERSION} --name $CIRCLE_PROJECT_REPONAME"."$VERSION"-build-"$CIRCLE_BUILD_NUM".zip" --file archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip
