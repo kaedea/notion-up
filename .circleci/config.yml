@@ -23,7 +23,7 @@ workflows:
               only:
                 - master
     jobs:
-      - export-workspace:
+      - export-workspace
       - publish-github-release:
           requires:
             - export-workspace
