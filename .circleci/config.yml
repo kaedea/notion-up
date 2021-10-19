@@ -37,19 +37,35 @@ jobs:
           name: Run action
           command: |
             PYTHONPATH=./ python main.py \
-                --action "export" \
-                --output "build"
+                --action "all" \
+                --output "build/exported"
       - run:
           name: Dump outputs
           command: |
-            echo "Exported zip file:\n"
-            pwd && ls -l && ls -l ~/project-export/build
+            echo "Collect exported zip files:\n"
+            pwd && ls -l && ls -l ~/project-export/build/exported
             echo "\n---\n"
-            echo "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
+            if [ -d '~/project-export/build/archives' ]; then
+                rm -rf ~/project-export/build/archives
+            fi
+            mkdir ~/project-export/build/archives
+            find ~/project-export/build/exported -name "*.zip" -type f | xargs -I '{}' mv '{}' ~/project-export/build/archives
       - persist_to_workspace:
           root: ~/project-export
           paths:
-            - ./build
+            - ./build/archives
+      - run:
+          name: Push to dist
+          command: |
+#            if [ -d 'dist' ]; then
+#                rm -rf dist
+#            fi
+#            mkdir dist
+#            # unzip
+#            echo "Unzip files:\n"
+#            pwd && ls -l && ls -l ~/project-export/build
+#            echo "\n---\n"
+#            echo "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
 
   publish-github-release:
     parameters:
