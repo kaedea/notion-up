@@ -49,6 +49,7 @@ jobs:
                 rm -rf ~/project-export/build/archives
             fi
             mkdir ~/project-export/build/archives
+            find ~/project-export/build/exported -name "*.zip" -type f | xargs -I '{}' echo '{}'
             find ~/project-export/build/exported -name "*.zip" -type f | xargs -I '{}' mv '{}' ~/project-export/build/archives
       - persist_to_workspace:
           root: ~/project-export
@@ -81,7 +82,7 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
-            pwd && ls -l && ls -l ~/project-export/build
+            pwd && ls -l && ls -l ~/project-export/build/archives
             VERSION=$(date '+%Y-%m-%d')
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/archives
      
