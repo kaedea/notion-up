@@ -68,7 +68,7 @@ jobs:
             ls -l
             ls -l ~/project-export
             ls -l ~/project-export/build
-            mv ~/project-export/build/Kaede Akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip ~/project-export/build/exported.zip
+            mv '~/project-export/build/Kaede Akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip' ~/project-export/build/exported.zip
             VERSION=$(date '+%Y-%m-%d')
             cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/exported.zip"
             echo "exe: $cmd"
