@@ -45,7 +45,7 @@ jobs:
             echo "Exported zip file:\n"
             pwd && ls -l && ls -l ~/project-export/build
             echo "\n---\n"
-            ls -l "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
+            echo "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
       - persist_to_workspace:
           root: ~/project-export
           paths:
