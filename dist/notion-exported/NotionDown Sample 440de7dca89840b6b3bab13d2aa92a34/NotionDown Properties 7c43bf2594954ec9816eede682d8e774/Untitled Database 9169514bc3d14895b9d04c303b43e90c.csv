@@ -1,0 +1,8 @@
+﻿Name,Example,Desc
+Title,基于 Notion 的笔记写作和博客分享自动化方案,MD Title
+Date,2021-05-20,
+Published,false,Draft or not
+Category,DevOps,
+Tag,"Tag1, Tag2, Tag3, ...",
+FileLocate,devops/subpath/...,Relative path
+FileName,file-name,Get 'file-name.dm'
