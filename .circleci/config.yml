@@ -70,8 +70,9 @@ jobs:
             mkdir ./archive
             cp -r ~/project-export/build ./archive
             ls -l ./archive
+            ls -l ./archive/build
             # cd ~/project-export && pwd && ls -l
             VERSION=$(date '+%Y-%m-%d')
-            cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./archive/"
+            cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./archive/build"
             echo "exe: $cmd"
             $("$cmd")
