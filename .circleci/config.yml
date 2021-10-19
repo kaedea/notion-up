@@ -58,7 +58,7 @@ jobs:
         default: master
     working_directory: ~/project-github-release
     docker:
-      - image: cimg/go:1.17.2-node
+      - image: sebastianoo/circleci-golang-node
     steps:
       - attach_workspace:
           at: ~/project-export
