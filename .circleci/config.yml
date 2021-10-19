@@ -58,7 +58,7 @@ jobs:
         default: master
     working_directory: ~/project-github-release
     docker:
-      - image: sebastianoo/circleci-golang-node
+      - image: cibuilds/github
     steps:
       - attach_workspace:
           at: ~/project-export
@@ -67,20 +67,6 @@ jobs:
           command: |
             pwd && ls -l
             ls -l ~/project-export/build
-            mkdir archive
-            cp -rf ~/project-export/build archive
-            ls -l archive
-            ls -l archive/build
-            ls -l archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b-zip
-            mv archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b-zip archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip
-            # cd ~/project-export && pwd && ls -l
-            # go get github.com/tcnksm/ghr
-            go get github.com/aktau/github-release
-            npm install --prefix=$HOME/.local --global github-release-notes
-            gren --override --data-source=commits
             VERSION=$(date '+%Y-%m-%d')
-            github-release upload --user $CIRCLE_PROJECT_USERNAME --repo $CIRCLE_PROJECT_REPONAME --tag ${VERSION} --name $CIRCLE_PROJECT_REPONAME"."$VERSION"-build-"$CIRCLE_BUILD_NUM".zip" --file archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip
-            # ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b.zip
-            # cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./archive/build/kaede-akatsuki-090c44bd-574d-460a-b3c9-f932f212046b-zip"
-            # echo "exe: $cmd"
-            # $("$cmd")
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build
+     
