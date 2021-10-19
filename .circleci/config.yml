@@ -7,10 +7,23 @@ workflows:
   backup-notion:
     jobs:
       - export-workspace:
-          branch_build: master
           filters:
             branches:
-              only: feautre/circleci
+              only: feature/circleci
+      - publish-github-release:
+          requires:
+            - export-workspace
+
+  backup-notion-nightly:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"  # every hour
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - export-workspace:
       - publish-github-release:
           requires:
             - export-workspace
@@ -37,14 +50,17 @@ jobs:
           name: Run action
           command: |
             PYTHONPATH=./ python main.py \
+                --token_v2 ${NOTION_TOKEN_V2} \
                 --action "all" \
                 --output "build/exported"
       - run:
           name: Dump outputs
           command: |
-            echo "Collect exported zip files:\n"
             pwd && ls -l && ls -l ~/project-export/build/exported
-            echo "\n---\n"
+      - run:
+          name: Collect zip files
+          command: |
+            echo "Collect exported zip files:"
             if [ -d '~/project-export/build/archives' ]; then
                 rm -rf ~/project-export/build/archives
             fi
@@ -56,17 +72,29 @@ jobs:
           paths:
             - ./build/archives
       - run:
-          name: Push to dist
+          name: Push unzip files to dist
           command: |
-             if [ -d 'dist' ]; then
-                 rm -rf dist
-             fi
-#            mkdir dist
-#            # unzip
-#            echo "Unzip files:\n"
-#            pwd && ls -l && ls -l ~/project-export/build
-#            echo "\n---\n"
-#            echo "$(find ~/project-export/build -name "*.zip" -type f | head -1)"
+            # skip push for test
+            exit 0
+
+            git clone -b feature/backups "https://${GH_TOKEN}@github.com/kaedea/notion-up.git" deploy
+            cd deploy
+            git config user.name "Kaede"
+            git config user.email "kidhaibara@gmail.com"
+
+            # Copy files
+            if [ -d 'dist' ]; then
+                rm -rf dist
+            fi
+            mkdir dist
+            echo "Copy unzipfiles:"
+            cp -r ~/project-export/build/exported/. dist/
+
+            # Git push
+            git add *
+            git status
+            git commit -a -m "Circleci-bot notion backup - ${CIRCLE_BUILD_NUM}"
+            git push --force --quiet "https://${GH_TOKEN}@github.com/kaedea/notion-up.git"
 
   publish-github-release:
     parameters:
@@ -82,7 +110,10 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
+            # skip github-release for test
+            exit 0
+
             pwd && ls -l && ls -l ~/project-export/build/archives
             VERSION=$(date '+%Y-%m-%d')
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/archives
+            ghr -t ${GH_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/project-export/build/archives
      
