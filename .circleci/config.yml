@@ -67,8 +67,9 @@ jobs:
           command: |
             pwd && ls -l
             ls -l ~/project-export/build
-            cp -r ~/project-export/build ./archive
+            # cp -r ~/project-export/build ./archive
+            cd ~/project-export && pwd && ls -l
             VERSION=$(date '+%Y-%m-%d')
-            cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./archive"
+            cmd="ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} build"
             echo "exe: $cmd"
             $("$cmd")
