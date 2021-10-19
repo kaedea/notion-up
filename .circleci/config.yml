@@ -7,10 +7,23 @@ workflows:
   backup-notion:
     jobs:
       - export-workspace:
-          branch_build: master
           filters:
             branches:
               only: feature/circleci
+      - publish-github-release:
+          requires:
+            - export-workspace
+
+  backup-notion-nightly:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"  # every hour
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - export-workspace:
       - publish-github-release:
           requires:
             - export-workspace
