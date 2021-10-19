@@ -32,6 +32,7 @@ jobs:
           name: Python pip install
           command: |
             pip install requests
+            pip install slugify
       - run:
           name: Run action
           command: |
