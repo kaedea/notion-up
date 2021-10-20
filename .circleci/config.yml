@@ -23,7 +23,7 @@ workflows:
               only:
                 - master
     jobs:
-      - export-workspace:
+      - export-workspace
       - publish-github-release:
           requires:
             - export-workspace
@@ -111,7 +111,7 @@ jobs:
           name: "Publish Release on GitHub"
           command: |
             # skip github-release for test
-            exit 0
+            # exit 0
 
             pwd && ls -l && ls -l ~/project-export/build/archives
             VERSION=$(date '+%Y-%m-%d')
