@@ -38,6 +38,17 @@ jobs:
     docker:
       - image: cimg/python:3.8
     steps:
+      - run:
+          name: Check Env
+          command: |
+            if [ ! ${GH_TOKEN} ]; then
+                echo "'GH_TOKEN' not presented!"
+                exit 1
+            fi
+            if [ ! ${NOTION_TOKEN_V2} ]; then
+                echo "'NOTION_TOKEN_V2' not presented!"
+                exit 1
+            fi
       - attach_workspace:
           at: ~/project-export
       - checkout
