@@ -1,7 +1,5 @@
 # notion-up
 
-# **Notion Up**
-
 NotionUp (Notion Backup) is a python repo helping you to backup notion data automatically.
 
 ## **Getting Started**
