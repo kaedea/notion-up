@@ -17,7 +17,7 @@ workflows:
   backup-notion-nightly:
     triggers:
       - schedule:
-          cron: "0 0 * * *"  # every day
+          cron: "0 0 * * *"  # every day UTC±00:00
           filters:
             branches:
               only:
