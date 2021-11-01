@@ -1,4 +1,5 @@
 # notion-up
+[中文说明](https://www.kaedea.com/2021/10/01/devops/notion-backup/)
 
 NotionUp (Notion Backup) is a python repo helping you to backup notion data automatically.
 
