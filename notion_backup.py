@@ -8,6 +8,7 @@ from typing import List
 import requests
 from slugify import slugify
 
+from notion_token import NotionToken
 from utils.config import Config
 from utils.utils import FileUtils
 
@@ -16,6 +17,18 @@ class NotionUp:
 
     def __init__(self) -> None:
         super().__init__()
+
+    @staticmethod
+    def getToken():
+        if not Config.username() and not Config.password() and not Config.token_v2():
+            raise Exception('username|password or token_v2 should be presented!')
+
+        if Config.username() and Config.password():
+            new_token = NotionToken.getNotionToken(Config.username(), Config.password())
+            if len(new_token) > 0:
+                print("Use new token fetched by username-password.")
+                Config.set_token_v2(new_token)
+        return Config.token_v2()
 
     @staticmethod
     def exportTask(spaceId):
@@ -40,7 +53,7 @@ class NotionUp:
             data=json.dumps(params).encode('utf8'),
             headers={
                 'content-type': 'application/json',
-                'cookie': f'token_v2={Config.token_v2()}; '
+                'cookie': f'token_v2={NotionUp.getToken()}; '
             },
         )
 
