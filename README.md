@@ -11,10 +11,10 @@ NotionUp (Notion Backup) is a python repo helping you to backup notion data auto
 
 To get started with NotionUp, you should:
 
-1. Prepare `notion_token_v2`.
+1. Prepare your Notion's username(email) and password, or just find your `notion_token_v2`.
 2. Run `notion-up/main.py` with your configs.
 
-Check [here](https://github.com/kaedea/notion-down/blob/master/dist/parse_readme/notiondown_gettokenv2.md) to get `notion_token_v2`.
+Check [here](https://github.com/kaedea/notion-down/blob/master/dist/parse_readme/notiondown_gettokenv2.md) to find out your `notion_token_v2` if need.
 
 ### **Run CLI**
 
@@ -22,7 +22,10 @@ Basically just run `notion-down/main.py` :
 
 ```bash
 # Run with cli cmd
-PYTHONPATH=./ python main.py --token_v2 <token_v2>
+PYTHONPATH=./ python main.py
+    --token_v2 <token_v2>
+    --username <token_v2>  # Only when token_v2 is not presented
+    --password <token_v2>  # Only when token_v2 is not presented
 
 # or
 PYTHONPATH=./ python main.py \
