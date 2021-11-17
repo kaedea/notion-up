@@ -13,15 +13,23 @@ DEFAULT_ARGS = {
     'notion_api': 'https://www.notion.so/api/v3',
     'notion_locale': 'en',
     'notion_timezone': 'Asia/Shanghai',
+    'username': None,
+    'password': None,
     'token_v2': None,
     'action': "all",  # all | export | unzip
     'zip_files': [],
 }
 SYS_ENV_MAP = {
     'token_v2': "NOTION_TOKEN_V2",
+    'username': "NOTION_USERNAME",
+    'password': "NOTION_PASSWORD",
 }
 REQUIRED_ARGS = [
     'action',
+]
+PRIVATE_ARGS = [
+    'username',
+    'password',
     'token_v2',
 ]
 REQUIRED_MODULES = [
@@ -91,7 +99,10 @@ class Config:
 
     @staticmethod
     def to_string():
-        return json.dumps(PROPERTIES, indent=2)
+        args = dict(PROPERTIES)
+        for key in PRIVATE_ARGS:
+            args[key] = "*" * 10
+        return json.dumps(args, indent=2)
 
 
 
