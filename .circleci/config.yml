@@ -9,7 +9,7 @@ workflows:
       - export-workspace:
           filters:
             branches:
-              only: feature/circleci
+              only: feature/circleci 
       - publish-github-release:
           requires:
             - export-workspace
@@ -17,7 +17,7 @@ workflows:
   backup-notion-nightly:
     triggers:
       - schedule:
-          cron: "0 0 * * *"  # every day UTC±00:00
+          cron: "0 * * * *"  # every day UTC±00:00
           filters:
             branches:
               only:
@@ -86,26 +86,10 @@ jobs:
           name: Push unzip files to dist
           command: |
             # skip push for test
+            echo "111111111111111111111111111111111111111111111111111111111111111111111111"
             exit 0
 
-            git clone -b feature/backups "https://${GH_TOKEN}@github.com/kaedea/notion-up.git" deploy
-            cd deploy
-            git config user.name "Kaede"
-            git config user.email "kidhaibara@gmail.com"
-
-            # Copy files
-            if [ -d 'dist' ]; then
-                rm -rf dist
-            fi
-            mkdir dist
-            echo "Copy unzipfiles:"
-            cp -r ~/project-export/build/exported/. dist/
-
-            # Git push
-            git add *
-            git status
-            git commit -a -m "Circleci-bot notion backup - ${CIRCLE_BUILD_NUM}"
-            git push --force --quiet "https://${GH_TOKEN}@github.com/kaedea/notion-up.git"
+            
 
   publish-github-release:
     parameters:
