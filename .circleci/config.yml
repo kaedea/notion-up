@@ -105,8 +105,8 @@ jobs:
       - run:
           name: "Publish Release on GitHub"
           command: |
-            # skip github-release for test
-            # exit 0
+            skip github-release for test
+            exit 0
 
             pwd && ls -l && ls -l ~/project-export/build/archives
             VERSION=$(date '+%Y-%m-%d')
