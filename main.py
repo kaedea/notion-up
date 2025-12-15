@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from notion_token import NotionToken
+from utils.config import Config
 from notion_backup import NotionUp
 from utils.config import Config
 
@@ -6,6 +8,15 @@ from utils.config import Config
 def start():
     print("Run with configs:")
     print("config = {}".format(Config.to_string()))
+
+    if not Config.username() and not Config.password() and not Config.token_v2():
+        raise Exception('username|password or token_v2 should be presented!')
+
+    if Config.username() and Config.password():
+        new_token = NotionToken.getNotionToken(Config.username(), Config.password())
+        if len(new_token) > 0:
+            print("Use new token fetched by username-password.")
+            Config.set_token_v2(new_token)
 
     if Config.action() not in ['all', 'export', 'unzip']:
         raise Exception('unknown action: {}'.format(Config.action()))

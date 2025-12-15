@@ -21,7 +21,8 @@ class NotionToken:
         }
         headers = {
             # Notion obviously check this as some kind of (bad) test of CSRF
-            'host': 'www.notion.so'
+            'host': 'www.notion.so',
+            "Content-Type": "application/json"
         }
         response = requests.post(
             'https://notion.so/api/v3/loginWithEmail',

@@ -24,8 +24,8 @@ Basically just run `notion-down/main.py` :
 # Run with cli cmd
 PYTHONPATH=./ python main.py
     --token_v2 <token_v2>
-    --username <token_v2>  # Only when token_v2 is not presented
-    --password <token_v2>  # Only when token_v2 is not presented
+    --username <username>  # Only when token_v2 is not presented
+    --password <password>  # Only when token_v2 is not presented
 
 # or
 PYTHONPATH=./ python main.py \
