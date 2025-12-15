@@ -1,0 +1,116 @@
+name: Notion Backup
+
+# Choose a proper trigger for yourself here.
+# on:
+#   schedule:
+#     # Every day at 00:00 UTC
+#     - cron: '0 0 * * *'
+#   push:
+#     branches:
+#       - feature/circleci
+#   workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export-workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Check Env
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "'GH_TOKEN' not presented!"
+            exit 1
+          fi
+          if [ -z "${NOTION_TOKEN_V2}" ]; then
+            echo "'NOTION_TOKEN_V2' not presented!"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          pip install requests python-slugify
+
+      - name: Run export action
+        env:
+          NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
+        run: |
+          export PYTHONPATH=./
+          python main.py \
+            --token_v2 "${NOTION_TOKEN_V2}" \
+            --action "all" \
+            --output "build/exported"
+
+      - name: List outputs
+        run: |
+          pwd
+          ls -l
+          if [ -d "build/exported" ]; then
+            ls -l build/exported
+          fi
+
+      - name: Collect zip files
+        run: |
+          echo "Collect exported zip files:"
+          if [ -d 'build/archives' ]; then
+            rm -rf build/archives
+          fi
+          mkdir -p build/archives
+          
+          # Find and move zip files
+          if [ -d "build/exported" ]; then
+            find build/exported -name "*.zip" -type f -exec echo '{}' \;
+            find build/exported -name "*.zip" -type f -exec mv '{}' build/archives \;
+          else
+             echo "No exported directory found."
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notion-backup-archives
+          path: build/archives
+          if-no-files-found: warn
+
+      # Logic for "Push unzip files to dist" is skipped/commented as per original config "exit 0"
+      # - name: Push unzip files to dist
+      #   ...
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          # Matches original logic: version by date
+          VERSION=$(date '+%Y-%m-%d')
+          
+          echo "Listing archives to publish:"
+          ls -l build/archives
+          
+          # Use gh cli to create release
+          # -t: title, -n: notes
+          # Check if tag exists, if so delete it (or handle gracefully)?
+          # CircleCI used 'ghr -delete', which deletes and recreates.
+          # We can just try to create a new one or update existing.
+          
+          # Note: The original logic used git commit hash as target (-c ${CIRCLE_SHA1})
+          # gh release create defaults to the current commit.
+          
+          # Create or update release
+          gh release create "$VERSION" build/archives/*.zip \
+            --title "$VERSION" \
+            --notes "Notion backup for $VERSION" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" || \
+          gh release upload "$VERSION" build/archives/*.zip --clobber --repo "${{ github.repository }}"
