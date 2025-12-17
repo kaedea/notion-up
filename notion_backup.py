@@ -67,7 +67,8 @@ class NotionUp:
     def waitForExportedUrl(taskId):
         print('Polling for export task: {}'.format(taskId))
         success_no_url_retries = 0
-        max_retries = 60  # 60 * 10s = 10 minutes timeout
+        wait_interval = 10
+        max_retries = Config.wait_timeout() // wait_interval
 
         while True:
             res = NotionUp.requestPost('getTasks', {'taskIds': [taskId]})

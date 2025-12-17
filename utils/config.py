@@ -18,6 +18,7 @@ DEFAULT_ARGS = {
     'token_v2': None,
     'action': "all",  # all | export | unzip
     'zip_files': [],
+    'wait_timeout': 3600,
 }
 SYS_ENV_MAP = {
     'token_v2': "NOTION_TOKEN_V2",
