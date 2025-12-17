@@ -136,8 +136,13 @@ class NotionUp:
         activities = response.get('recordMap', {}).get('activity', {})
         found_exports = []
         for act_id, act_item in activities.items():
-            # Structure: value -> value -> type
-            act_value = act_item.get('value', {}).get('value', {})
+            # Structure: 
+            # V1: value -> value -> type
+            # V2: value -> type
+            act_value = act_item.get('value', {})
+            if act_value.get('value'):
+                act_value = act_value.get('value')
+            
             if act_value.get('type') == 'export-completed':
                 # Check spaceId match if provided
                 if spaceId and act_value.get('space_id') != spaceId:
@@ -146,9 +151,11 @@ class NotionUp:
                 # Extract URL from edits
                 edits = act_value.get('edits', [])
                 if edits and edits[0].get('link'):
+                    # V2 uses 'start_time' or 'end_time' directly in the value object
+                    timestamp = act_value.get('end_time') or act_value.get('start_time', 0)
                     found_exports.append({
                         'url': edits[0].get('link'),
-                        'timestamp': int(act_value.get('end_time', 0))
+                        'timestamp': int(timestamp)
                     })
         
         # Sort by timestamp descending (newest first)
