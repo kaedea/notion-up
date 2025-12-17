@@ -14,7 +14,7 @@ To get started with NotionUp, you should:
 1. Prepare your Notion's username(email) and password, or just find your `notion_token_v2`.
 2. Run `notion-up/main.py` with your configs.
 
-Check [here](https://github.com/kaedea/notion-down/blob/master/dist/parse_readme/notiondown_gettokenv2.md) to find out your `notion_token_v2` if need.
+Check [here](https://github.com/kaedea/notion-down/blob/master/dist/parse_readme/notiondown_gettokenv2.md) to find out your `notion_token_v2` if need. BTW, `file_token` can also be found here, and if you don't find file_token, you need to have at least had exported a file manually once.
 
 ### **Run CLI**
 
