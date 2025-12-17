@@ -71,9 +71,20 @@ class NotionUp:
             tasks = res.get('results')
             task = next(t for t in tasks if t['id'] == taskId)
             if task['state'] == 'success':
-                url = task['status']['exportURL']
-                print('\n' + url)
-                break
+                # Try finding exportURL in various locations: standard, result, or root
+                url = task.get('status', {}).get('exportURL')
+                if not url:
+                    url = task.get('result', {}).get('exportURL')
+                if not url:
+                    url = task.get('exportURL')
+
+                if url:
+                    print('\n' + url)
+                    break
+                else:
+                    # Debug: print full task if URL missing despite success
+                    print(f'\n[DEBUG] Task success but exportURL missing. Task: {json.dumps(task)}')
+                    raise Exception('Export URL not found in success response.')
             else:
                 print('.', end="", flush=True)
                 time.sleep(10)
