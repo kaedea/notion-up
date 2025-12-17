@@ -64,7 +64,7 @@ class NotionUp:
         return NotionUp.requestPost("loadUserContent", {})["recordMap"]
 
     @staticmethod
-    def waitForExportedUrl(taskId):
+    def waitForExportedUrl(taskId, spaceId=None):
         print('Polling for export task: {}'.format(taskId))
         success_no_url_retries = 0
         wait_interval = 10
@@ -82,6 +82,34 @@ class NotionUp:
                     url = task.get('result', {}).get('exportURL')
                 if not url:
                     url = task.get('exportURL')
+                
+                # If URL found in the original task object
+                if url:
+                    print('\n' + url)
+                    break
+                
+                # If URL still missing, check getExportTasks
+                print(f'\n[DEBUG] Task success but exportURL missing. Checking getExportTasks...')
+                try:
+                    export_tasks_res = NotionUp.requestPost('getExportTasks', {'spaceId': spaceId} if spaceId else {})
+                    export_tasks = export_tasks_res.get('results', [])
+                    # Look for successful task with exportURL, preferably matching spaceId
+                    for et in export_tasks:
+                        if et.get('state') == 'success' and et.get('status', {}).get('exportURL'):
+                            # Verify spaceId if provided
+                            if spaceId and et.get('request', {}).get('spaceId') != spaceId:
+                                continue
+                            
+                            # Found a candidte. 
+                            # Note: potentially we should check if it's recent, but Notion typically returns list.
+                            # We'll take the first matching one or the one that corresponds to our request.
+                            # Since we don't have a reliable link between taskId and exportTask id, 
+                            # we assume the latest one or matching space is ours.
+                            url = et['status']['exportURL']
+                            print(f'\n[DEBUG] Found URL from getExportTasks: {url}')
+                            break
+                except Exception as e:
+                    print(f'\n[DEBUG] Failed to check getExportTasks: {e}')
 
                 if url:
                     print('\n' + url)
@@ -94,10 +122,10 @@ class NotionUp:
                         raise Exception('Export URL not found in success response after timeout.')
                     
                     print(f'\n[INFO] Task state is success but exportURL is not yet available. Retrying... (Attempt {success_no_url_retries}/{max_retries})')
-                    time.sleep(10)
+                    time.sleep(wait_interval)
             else:
                 print('.', end="", flush=True)
-                time.sleep(10)
+                time.sleep(wait_interval)
         return url
 
     @staticmethod
@@ -125,7 +153,7 @@ class NotionUp:
             # request export task
             taskId = NotionUp.requestPost('enqueueTask', NotionUp.exportTask(spaceId)).get('taskId')
             # get exported file url and download
-            url = NotionUp.waitForExportedUrl(taskId)
+            url = NotionUp.waitForExportedUrl(taskId, spaceId)
             filename = slugify(f'{spaceName}-{spaceId}') + '.zip'
             print('download exported zip: {}, {}'.format(url, filename))
             filePath = NotionUp.downloadFile(url, filename)
