@@ -19,11 +19,13 @@ DEFAULT_ARGS = {
     'action': "all",  # all | export | unzip
     'zip_files': [],
     'wait_timeout': 3600,
+    'file_token': None,
 }
 SYS_ENV_MAP = {
     'token_v2': "NOTION_TOKEN_V2",
     'username': "NOTION_USERNAME",
     'password': "NOTION_PASSWORD",
+    'file_token': "NOTION_FILE_TOKEN",
 }
 REQUIRED_ARGS = [
     'action',

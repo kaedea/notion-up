@@ -48,12 +48,16 @@ class NotionUp:
 
     @staticmethod
     def requestPost(endpoint: str, params: object):
+        cookie = f'token_v2={NotionUp.getToken()}; '
+        if Config.file_token():
+            cookie += f'file_token={Config.file_token()}; '
+
         response = requests.post(
             f'{Config.notion_api()}/{endpoint}',
             data=json.dumps(params).encode('utf8'),
             headers={
                 'content-type': 'application/json',
-                'cookie': f'token_v2={NotionUp.getToken()}; '
+                'cookie': cookie
             },
         )
 
@@ -76,40 +80,39 @@ class NotionUp:
             task = next(t for t in tasks if t['id'] == taskId)
             
             if task['state'] == 'success':
-                # Try finding exportURL in various locations
+                # Try finding exportURL in various locations in the task object
                 url = task.get('status', {}).get('exportURL')
                 if not url:
                     url = task.get('result', {}).get('exportURL')
                 if not url:
                     url = task.get('exportURL')
                 
-                # If URL found in the original task object
                 if url:
                     print('\n' + url)
                     break
                 
-                # If URL still missing, check getExportTasks
-                print(f'\n[DEBUG] Task success but exportURL missing. Checking getExportTasks...')
+                # If URL still missing, check getNotificationLog (V1)
+                print(f'\n[DEBUG] Task success but exportURL missing. Checking getNotificationLog...')
                 try:
-                    export_tasks_res = NotionUp.requestPost('getExportTasks', {'spaceId': spaceId} if spaceId else {})
-                    export_tasks = export_tasks_res.get('results', [])
-                    # Look for successful task with exportURL, preferably matching spaceId
-                    for et in export_tasks:
-                        if et.get('state') == 'success' and et.get('status', {}).get('exportURL'):
-                            # Verify spaceId if provided
-                            if spaceId and et.get('request', {}).get('spaceId') != spaceId:
-                                continue
-                            
-                            # Found a candidte. 
-                            # Note: potentially we should check if it's recent, but Notion typically returns list.
-                            # We'll take the first matching one or the one that corresponds to our request.
-                            # Since we don't have a reliable link between taskId and exportTask id, 
-                            # we assume the latest one or matching space is ours.
-                            url = et['status']['exportURL']
-                            print(f'\n[DEBUG] Found URL from getExportTasks: {url}')
-                            break
+                    notification_res = NotionUp.requestPost('getNotificationLog', {'spaceId': spaceId} if spaceId else {})
+                    url = NotionUp._parse_notification_log(notification_res, spaceId)
                 except Exception as e:
-                    print(f'\n[DEBUG] Failed to check getExportTasks: {e}')
+                    print(f'\n[DEBUG] Failed to check getNotificationLog: {e}')
+
+                # If URL still missing, check getNotificationLogV2 (V2)
+                if not url:
+                    print(f'\n[DEBUG] URL not found in V1 log. Checking getNotificationLogV2...')
+                    try:
+                        payload = {
+                            'spaceId': spaceId,
+                            'size': 20,
+                            'type': 'unread_and_read',
+                            'variant': 'no_grouping'
+                        }
+                        notification_res_v2 = NotionUp.requestPost('getNotificationLogV2', payload)
+                        url = NotionUp._parse_notification_log(notification_res_v2, spaceId)
+                    except Exception as e:
+                        print(f'\n[DEBUG] Failed to check getNotificationLogV2: {e}')
 
                 if url:
                     print('\n' + url)
@@ -127,6 +130,35 @@ class NotionUp:
                 print('.', end="", flush=True)
                 time.sleep(wait_interval)
         return url
+
+    @staticmethod
+    def _parse_notification_log(response, spaceId=None):
+        activities = response.get('recordMap', {}).get('activity', {})
+        found_exports = []
+        for act_id, act_item in activities.items():
+            # Structure: value -> value -> type
+            act_value = act_item.get('value', {}).get('value', {})
+            if act_value.get('type') == 'export-completed':
+                # Check spaceId match if provided
+                if spaceId and act_value.get('space_id') != spaceId:
+                    continue
+                
+                # Extract URL from edits
+                edits = act_value.get('edits', [])
+                if edits and edits[0].get('link'):
+                    found_exports.append({
+                        'url': edits[0].get('link'),
+                        'timestamp': int(act_value.get('end_time', 0))
+                    })
+        
+        # Sort by timestamp descending (newest first)
+        found_exports.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        if found_exports:
+            url = found_exports[0]['url']
+            print(f'\n[DEBUG] Found URL from notification log: {url}')
+            return url
+        return None
 
     @staticmethod
     def downloadFile(url, filename) -> str:
