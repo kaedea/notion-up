@@ -66,12 +66,16 @@ class NotionUp:
     @staticmethod
     def waitForExportedUrl(taskId):
         print('Polling for export task: {}'.format(taskId))
+        success_no_url_retries = 0
+        max_retries = 60  # 60 * 10s = 10 minutes timeout
+
         while True:
             res = NotionUp.requestPost('getTasks', {'taskIds': [taskId]})
             tasks = res.get('results')
             task = next(t for t in tasks if t['id'] == taskId)
+            
             if task['state'] == 'success':
-                # Try finding exportURL in various locations: standard, result, or root
+                # Try finding exportURL in various locations
                 url = task.get('status', {}).get('exportURL')
                 if not url:
                     url = task.get('result', {}).get('exportURL')
@@ -82,9 +86,14 @@ class NotionUp:
                     print('\n' + url)
                     break
                 else:
-                    # Debug: print full task if URL missing despite success
-                    print(f'\n[DEBUG] Task success but exportURL missing. Task: {json.dumps(task)}')
-                    raise Exception('Export URL not found in success response.')
+                    # Task success but URL missing. Retry.
+                    success_no_url_retries += 1
+                    if success_no_url_retries > max_retries:
+                        print(f'\n[DEBUG] Task success but exportURL missing after {max_retries} retries. Task: {json.dumps(task)}')
+                        raise Exception('Export URL not found in success response after timeout.')
+                    
+                    print(f'\n[INFO] Task state is success but exportURL is not yet available. Retrying... (Attempt {success_no_url_retries}/{max_retries})')
+                    time.sleep(10)
             else:
                 print('.', end="", flush=True)
                 time.sleep(10)
