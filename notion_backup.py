@@ -270,12 +270,29 @@ class NotionUp:
                 saveDir = FileUtils.new_file(Config.output(), Path(filePath).name.replace('.zip', ''))
             FileUtils.clean_dir(saveDir)
 
+            print(f'Unzipping {filePath} to {saveDir}...')
             file = zipfile.ZipFile(filePath)
             file.extractall(saveDir)
             file.close()
+            
+            # Delete original zip after extraction to avoid duplicates in archives
+            print(f'Deleting original zip: {filePath}')
+            os.remove(filePath)
             return saveDir
         except Exception as e:
             print(f'{filePath} unzip fail,{str(e)}')
+
+    @staticmethod
+    def archiveDir(dirPath: str, zipPath: str):
+        try:
+            print(f'Archiving {dirPath} to {zipPath}...')
+            # shutil.make_archive takes base_name without .zip
+            base_name = zipPath.replace('.zip', '')
+            shutil.make_archive(base_name, 'zip', dirPath)
+            return zipPath
+        except Exception as e:
+            print(f'Archive {dirPath} fail: {str(e)}')
+            return None
 
     @staticmethod
     def unzip():

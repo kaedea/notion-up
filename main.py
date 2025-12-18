@@ -7,9 +7,6 @@ def start():
     print("Run with configs:")
     print("config = {}".format(Config.to_string()))
 
-    if Config.action() not in ['all', 'export', 'unzip']:
-        raise Exception('unknown action: {}'.format(Config.action()))
-
     if Config.action() in ['all', 'export']:
         # get backup file
         zips = NotionUp.backup()
@@ -18,7 +15,18 @@ def start():
     if Config.action() in ['all', 'unzip']:
         # unzip
         NotionUp.unzip()
-        # archive files
+
+    if Config.action() in ['archive']:
+        # re-archive unzipped directories
+        import os
+        from pathlib import Path
+        output_dir = Config.output()
+        if os.path.exists(output_dir):
+            for item in os.listdir(output_dir):
+                item_path = os.path.join(output_dir, item)
+                if os.path.isdir(item_path):
+                    zip_path = os.path.join(output_dir, f"{item}.zip")
+                    NotionUp.archiveDir(item_path, zip_path)
 
 
 # Cli cmd example:
