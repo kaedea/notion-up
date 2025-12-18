@@ -132,7 +132,7 @@ class NotionUp:
         return url
 
     @staticmethod
-    def _parse_notification_log(response, spaceId=None):
+    def _get_export_list(response, spaceId=None):
         activities = response.get('recordMap', {}).get('activity', {})
         found_exports = []
         for act_id, act_item in activities.items():
@@ -160,7 +160,11 @@ class NotionUp:
         
         # Sort by timestamp descending (newest first)
         found_exports.sort(key=lambda x: x['timestamp'], reverse=True)
-        
+        return found_exports
+
+    @staticmethod
+    def _parse_notification_log(response, spaceId=None):
+        found_exports = NotionUp._get_export_list(response, spaceId)
         if found_exports:
             url = found_exports[0]['url']
             print(f'\n[DEBUG] Found URL from notification log: {url}')
@@ -168,10 +172,62 @@ class NotionUp:
         return None
 
     @staticmethod
+    def findRecentExport(spaceId):
+        print(f'Checking for recent exports for space: {spaceId}')
+        try:
+            # Check V2 first
+            payload = {
+                'spaceId': spaceId,
+                'size': 20,
+                'type': 'unread_and_read',
+                'variant': 'no_grouping'
+            }
+            notification_res_v2 = NotionUp.requestPost('getNotificationLogV2', payload)
+            found_exports = NotionUp._get_export_list(notification_res_v2, spaceId)
+            
+            if not found_exports:
+                # Fallback to V1
+                notification_res_v1 = NotionUp.requestPost('getNotificationLog', {'spaceId': spaceId} if spaceId else {})
+                found_exports = NotionUp._get_export_list(notification_res_v1, spaceId)
+                
+            if found_exports:
+                latest = found_exports[0]
+                url = latest['url']
+                timestamp = latest['timestamp']
+                
+                now_ms = int(time.time() * 1000)
+                elapsed_hrs = (now_ms - timestamp) / (1000 * 3600)
+                
+                if elapsed_hrs < 24:
+                    print(f'[INFO] Found a valid recent export ({elapsed_hrs:.2f} hours old). Skipping new export.')
+                    return url
+                else:
+                    print(f'[DEBUG] Found export but it is too old ({elapsed_hrs:.2f} hours old).')
+        except Exception as e:
+            print(f'[DEBUG] Failed to check for recent exports: {e}')
+        return None
+
+    @staticmethod
     def downloadFile(url, filename) -> str:
         file = FileUtils.new_file(Config.output(), filename)
         FileUtils.create_file(file)
-        with requests.get(url, stream=True) as r:
+        
+        cookie = f'token_v2={NotionUp.getToken()}; '
+        if Config.file_token():
+            cookie += f'file_token={Config.file_token()}; '
+
+        headers = {
+            'cookie': cookie,
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        print(f'Downloading from {url}')
+        with requests.get(url, stream=True, headers=headers) as r:
+            if r.status_code != 200:
+                print(f'\n[ERROR] Download failed with status {r.status_code}')
+                print(f'Response snippet: {r.text[:1000]}')
+                raise Exception(f'Download failed with status {r.status_code}')
+            
             with open(file, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
         return file
@@ -189,10 +245,17 @@ class NotionUp:
         print("Available spaces total: {}".format(len(spaces)))
         for (spaceId, spaceName) in spaces:
             print(f"\nexport space: {spaceId}, {spaceName}")
-            # request export task
-            taskId = NotionUp.requestPost('enqueueTask', NotionUp.exportTask(spaceId)).get('taskId')
-            # get exported file url and download
-            url = NotionUp.waitForExportedUrl(taskId, spaceId)
+            
+            # 1. Check for recent export
+            url = NotionUp.findRecentExport(spaceId)
+            
+            if not url:
+                # 2. No recent export, request new export task
+                print("No recent export found. Requesting new export task...")
+                taskId = NotionUp.requestPost('enqueueTask', NotionUp.exportTask(spaceId)).get('taskId')
+                # get exported file url and download
+                url = NotionUp.waitForExportedUrl(taskId, spaceId)
+            
             filename = slugify(f'{spaceName}-{spaceId}') + '.zip'
             print('download exported zip: {}, {}'.format(url, filename))
             filePath = NotionUp.downloadFile(url, filename)
