@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import time
 import zipfile
@@ -20,15 +21,19 @@ class NotionUp:
 
     @staticmethod
     def getToken():
-        if not Config.username() and not Config.password() and not Config.token_v2():
+        if Config.token_v2():
+            return Config.token_v2()
+
+        if not Config.username() or not Config.password():
             raise Exception('username|password or token_v2 should be presented!')
 
-        if Config.username() and Config.password():
-            new_token = NotionToken.getNotionToken(Config.username(), Config.password())
-            if len(new_token) > 0:
-                print("Use new token fetched by username-password.")
-                Config.set_token_v2(new_token)
-        return Config.token_v2()
+        new_token = NotionToken.getNotionToken(Config.username(), Config.password())
+        if len(new_token) > 0:
+            print("Use new token fetched by username-password.")
+            Config.set_token_v2(new_token)
+            return new_token
+        
+        raise Exception('Failed to fetch token from username/password')
 
     @staticmethod
     def exportTask(spaceId):
@@ -270,14 +275,29 @@ class NotionUp:
                 saveDir = FileUtils.new_file(Config.output(), Path(filePath).name.replace('.zip', ''))
             FileUtils.clean_dir(saveDir)
 
-            print(f'Unzipping {filePath} to {saveDir}...')
-            file = zipfile.ZipFile(filePath)
-            file.extractall(saveDir)
-            file.close()
+            zip_size = os.path.getsize(filePath)
+            print(f'Unzipping {filePath} ({zip_size} bytes) to {saveDir}...')
+            
+            with zipfile.ZipFile(filePath) as z:
+                file_list = z.namelist()
+                print(f'Zip contains {len(file_list)} items: {file_list[:10]}...')
+                z.extractall(saveDir)
             
             # Delete original zip after extraction to avoid duplicates in archives
             print(f'Deleting original zip: {filePath}')
             os.remove(filePath)
+
+            # Recursive unzip for nested zips (Notion often nests Part-1.zip etc.)
+            for root, dirs, files in os.walk(saveDir):
+                for file in files:
+                    if file.endswith('.zip'):
+                        nested_path = os.path.join(root, file)
+                        print(f'Found nested zip: {nested_path}. Extracting...')
+                        # Extract nested zip into the SAME directory
+                        with zipfile.ZipFile(nested_path) as nz:
+                            nz.extractall(root)
+                        os.remove(nested_path)
+
             return saveDir
         except Exception as e:
             print(f'{filePath} unzip fail,{str(e)}')
