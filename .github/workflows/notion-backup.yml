@@ -1,116 +1,192 @@
 name: Notion Backup
 
-# Choose a proper trigger for yourself here.
-# on:
-#   schedule:
-#     # Every day at 00:00 UTC
-#     - cron: '0 0 * * *'
-#   push:
-#     branches:
-#       - feature/circleci
-#   workflow_dispatch:
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      wait_timeout:
+        description: 'Timeout in seconds for waiting exportURL (default: 3600)'
+        required: false
+        default: '3600'
+      debug_mode:
+        description: 'Debug mode'
+        required: false
+        default: 'debug_unzipping'
+        type: choice
+        options:
+          - 'no'
+          - 'debug_exported_url'
+          - 'debug_unzipping'
+  
+  # Weekly backup - Sunday 22:00 UTC
+  # schedule:
+  #   - cron: '0 22 * * 0'
 
-permissions:
-  contents: write
+env:
+  TZ: Asia/Hong_Kong
 
 jobs:
   export-workspace:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout notion-up repository
+      uses: actions/checkout@v4
+      with:
+        path: notion-up
+    
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Install Python dependencies
+      run: |
+        cd notion-up
+        pip install requests python-slugify
+    
+    - name: Run notion backup
+      if: github.event.inputs.debug_mode != 'debug_unzipping'
+      env:
+        NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
+        NOTION_USERNAME: ${{ secrets.NOTION_USERNAME }}
+        NOTION_PASSWORD: ${{ secrets.NOTION_PASSWORD }}
+        NOTION_FILE_TOKEN: ${{ secrets.NOTION_FILE_TOKEN }}
+      run: |
+        cd notion-up
+        PYTHONPATH=./ python main.py \
+          --action "all" \
+          --output "build/exported" \
+          --wait_timeout "${{ inputs.wait_timeout || '3600' }}" \
+          ${NOTION_TOKEN_V2:+--token_v2 "$NOTION_TOKEN_V2"} \
+          ${NOTION_USERNAME:+--username "$NOTION_USERNAME"} \
+          ${NOTION_PASSWORD:+--password "$NOTION_PASSWORD"} \
+          ${NOTION_FILE_TOKEN:+--file_token "$NOTION_FILE_TOKEN"}
+    
+    - name: Download latest release ZIP for unzipping debug
+      if: github.event.inputs.debug_mode == 'debug_unzipping'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir -p notion-up/build/exported
+        gh release download --pattern "*.zip" --dir notion-up/build/exported || echo "No release zip found, trying manual export..."
+        
+        # Identify the downloaded zip
+        LATEST_ZIP=$(find notion-up/build/exported -name "*.zip" | head -n 1)
+        if [ -n "$LATEST_ZIP" ]; then
+          echo "Using ZIP: $LATEST_ZIP for debug_unzipping"
+          mv "$LATEST_ZIP" notion-up/build/exported/exported.zip
+          cd notion-up
+          PYTHONPATH=./ python main.py --action unzip --output build/exported --zip_files build/exported/exported.zip
+        else
+          echo "No release ZIP found. Please run with debug_mode=no or provide secrets."
+          exit 1
+        fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
+    - name: Process exported files
+      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      run: |
+        cd notion-up
+        echo "=== Unzipped content before cleanup ==="
+        ls -R build/exported/
+        
+        # 1. Remove personal files from unzipped directories
+        echo "=== Removing personal files ==="
+        find build/exported -name "*Personals*" -type d -exec rm -rf {} + 2>/dev/null || true
+        find build/exported -name "*Personals*" -type f -delete 2>/dev/null || true
+        
+        # 2. Purge internal zips that might have been unzipped
+        find build/exported -name "*.zip" -type f -delete 2>/dev/null || true
+        
+        # 3. Re-archive the cleaned directories
+        echo "=== Re-archiving cleaned content ==="
+        PYTHONPATH=./ python main.py --action "archive" --output "build/exported"
+        
+        # 4. Collect zip files
+        mkdir -p build/archives
+        find build/exported -name "*.zip" -type f -exec mv {} build/archives/ \;
+        
+        echo "=== Final archives ==="
+        ls -la build/archives/
 
-      - name: Check Env
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
-        run: |
-          if [ -z "${GH_TOKEN}" ]; then
-            echo "'GH_TOKEN' not presented!"
-            exit 1
-          fi
-          if [ -z "${NOTION_TOKEN_V2}" ]; then
-            echo "'NOTION_TOKEN_V2' not presented!"
-            exit 1
-          fi
+    - name: Checkout deployment repository
+      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # ref: devops/deploy-dist # Users should customize this
+        fetch-depth: 0
+        lfs: true
+        path: deploy
 
-      - name: Install dependencies
-        run: |
-          pip install requests python-slugify
-
-      - name: Run export action
-        env:
-          NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
-        run: |
-          export PYTHONPATH=./
-          python main.py \
-            --token_v2 "${NOTION_TOKEN_V2}" \
-            --action "all" \
-            --output "build/exported"
-
-      - name: List outputs
-        run: |
-          pwd
-          ls -l
-          if [ -d "build/exported" ]; then
-            ls -l build/exported
-          fi
-
-      - name: Collect zip files
-        run: |
-          echo "Collect exported zip files:"
-          if [ -d 'build/archives' ]; then
-            rm -rf build/archives
-          fi
-          mkdir -p build/archives
-          
-          # Find and move zip files
-          if [ -d "build/exported" ]; then
-            find build/exported -name "*.zip" -type f -exec echo '{}' \;
-            find build/exported -name "*.zip" -type f -exec mv '{}' build/archives \;
+    - name: Push unzipped files
+      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      working-directory: deploy
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Configure git
+        git config user.name "GitHub Actions Bot"
+        git config user.email "actions@github.com"
+        
+        # Merge master/main to keep deploy branch up to date
+        git fetch origin master || git fetch origin main
+        git merge origin/master --no-edit || git merge origin/main --no-edit || echo "No changes to merge"
+        
+        # Ensure Git LFS is initialized
+        git lfs install
+        
+        # Copy files (Flatten structure)
+        rm -rf dist
+        mkdir -p dist
+        
+        SPACE_DIR=$(find ../notion-up/build/exported -maxdepth 1 -mindepth 1 -type d | head -n 1)
+        if [ -d "$SPACE_DIR" ]; then
+          CONTENT_ROOT=$(find "$SPACE_DIR" -name "index.html" -exec dirname {} \; | head -n 1)
+          if [ -n "$CONTENT_ROOT" ] && [ -d "$CONTENT_ROOT" ]; then
+            cp -rp "$CONTENT_ROOT"/. dist/
           else
-             echo "No exported directory found."
+            cp -rp "$SPACE_DIR"/. dist/
           fi
+          find dist -name "*Personals*" -exec rm -rf {} + 2>/dev/null || true
+        fi
+        
+        git add .
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: notion-backup-archives
-          path: build/archives
-          if-no-files-found: warn
+        if git diff --staged --quiet; then
+          echo "No changes detected"
+          echo "skip_release=true" >> $GITHUB_ENV
+        else
+          git commit -m "Automated Notion update - $(date '+%Y-%m-%d')"
+          if [ "${{ github.event.inputs.debug_mode }}" == "no" ]; then
+             # git push origin devops/deploy-dist # Users should customize this
+             echo "skip_release=false" >> $GITHUB_ENV
+          else
+             echo "Debug mode: skipping push."
+             echo "skip_release=true" >> $GITHUB_ENV
+          fi
+        fi
 
-      # Logic for "Push unzip files to dist" is skipped/commented as per original config "exit 0"
-      # - name: Push unzip files to dist
-      #   ...
-
-      - name: Publish Release
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          # Matches original logic: version by date
-          VERSION=$(date '+%Y-%m-%d')
-          
-          echo "Listing archives to publish:"
-          ls -l build/archives
-          
-          # Use gh cli to create release
-          # -t: title, -n: notes
-          # Check if tag exists, if so delete it (or handle gracefully)?
-          # CircleCI used 'ghr -delete', which deletes and recreates.
-          # We can just try to create a new one or update existing.
-          
-          # Note: The original logic used git commit hash as target (-c ${CIRCLE_SHA1})
-          # gh release create defaults to the current commit.
-          
-          # Create or update release
-          gh release create "$VERSION" build/archives/*.zip \
-            --title "$VERSION" \
-            --notes "Notion backup for $VERSION" \
-            --repo "${{ github.repository }}" \
-            --target "${{ github.sha }}" || \
-          gh release upload "$VERSION" build/archives/*.zip --clobber --repo "${{ github.repository }}"
+    - name: Create Pull Request
+      if: ${{ github.event.inputs.debug_mode == 'no' && env.skip_release != 'true' }}
+      working-directory: deploy
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Example: gh pr create --base master --head devops/deploy-dist --title "..." --body "..."
+        echo "Auto PR logic requires custom branch configuration."
+    
+    - name: Create GitHub Release
+      if: ${{ github.event.inputs.debug_mode == 'no' && env.skip_release != 'true' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        VERSION=$(date '+%Y-%m-%d')
+        gh release create "$VERSION" \
+          --title "Notion Backup $VERSION" \
+          --notes "Automated backup" \
+          --latest \
+          notion-up/build/archives/* || echo "Release creation failed"

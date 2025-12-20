@@ -37,41 +37,32 @@ PYTHONPATH=./ python main.py \
 
 ### Archive to GitHub Release
 
-Check the following workflows and jobs in `.circleci/config.yml` to get how it works.
+NotionUp provides a GitHub Actions workflow to automate the backup process. Check `.github/workflows/notion-backup.yml` for details.
+
+The workflow performs the following:
+1.  **Export**: Downloads your Notion workspace as a HTML/Markdown ZIP.
+2.  **Scrub**: Automatically removes sensitive `*Personals*` directories.
+3.  **Flatten**: Unzips and flattens the directory structure for clean Git history.
+4.  **LFS**: Supports Git LFS for large binary attachments (images, PDFs).
+5.  **Release**: Creates a GitHub Release with the cleaned ZIP archive.
+
+As examples, check the output at [Release](https://github.com/kaedea/notion-up/releases) and the [dist](https://github.com/kaedea/notion-up/tree/master/dist) directory.
+
+### Backup Schedule
+
+You can enable the cron job in the workflow file to run backups automatically (e.g., weekly).
 
 ```yaml
-workflows:
-  backup-notion:
-    jobs:
-      - export-workspace
-      - publish-github-release:
-          requires:
-            - export-workspace
+on:
+  schedule:
+    - cron: '0 22 * * 0' # Sundays at 22:00 UTC
 ```
 
-As examples, check the output at [Release](https://github.com/kaedea/notion-up/releases) and [notion-exported](https://github.com/kaedea/notion-up/tree/master/dist).
-
-### Backup nightly
-
-Check the following crontab workflows.
-
-```yaml
-workflows:
-  backup-notion-nightly:
-    triggers:
-      - schedule:
-          cron: "0 * * * *"  # every hour
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - export-workspace
-      - publish-github-release:
-          requires:
-            - export-workspace
-```
+### Debug Modes
+The workflow includes granular debug modes:
+- `debug_exported_url`: Tests Notion API connectivity and export URL generation.
+- `debug_unzipping`: Skip the slow export and test the processing logic using the latest release ZIP.
 
 ## **Showcase**
 
-Work with CircleCI, see `.circleci/config.yml`.
+Integrated with GitHub Actions. See [.github/workflows/notion-backup.yml](.github/workflows/notion-backup.yml).
