@@ -8,13 +8,13 @@ on:
         description: 'Timeout in seconds for waiting exportURL (default: 3600)'
         required: false
         default: '3600'
-      debug_mode:
-        description: 'Debug mode'
+      run_mode:
+        description: 'Run mode'
         required: false
         default: 'debug_unzipping'
         type: choice
         options:
-          - 'no'
+          - 'real_backup'
           - 'debug_exported_url'
           - 'debug_unzipping'
   
@@ -49,7 +49,7 @@ jobs:
         pip install requests python-slugify
     
     - name: Run notion backup
-      if: github.event.inputs.debug_mode != 'debug_unzipping'
+      if: github.event.inputs.run_mode != 'debug_unzipping'
       working-directory: notion-up
       env:
         NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
@@ -67,7 +67,7 @@ jobs:
           ${NOTION_FILE_TOKEN:+--file_token "$NOTION_FILE_TOKEN"}
     
     - name: Download latest release ZIP for unzipping debug
-      if: github.event.inputs.debug_mode == 'debug_unzipping'
+      if: github.event.inputs.run_mode == 'debug_unzipping'
       working-directory: notion-up
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
         fi
 
     - name: Process exported files
-      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      if: github.event.inputs.run_mode != 'debug_exported_url'
       working-directory: notion-up
       run: |
         echo "=== Unzipped content before cleanup ==="
@@ -113,7 +113,7 @@ jobs:
         ls -la build/archives/
 
     - name: Checkout deployment repository
-      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      if: github.event.inputs.run_mode != 'debug_exported_url'
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -123,7 +123,7 @@ jobs:
         path: deploy
 
     - name: Push unzipped files
-      if: github.event.inputs.debug_mode != 'debug_exported_url'
+      if: github.event.inputs.run_mode != 'debug_exported_url'
       working-directory: deploy
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -161,7 +161,7 @@ jobs:
           echo "skip_release=true" >> $GITHUB_ENV
         else
           git commit -m "Automated Notion update - $(date '+%Y-%m-%d')"
-          if [ "${{ github.event.inputs.debug_mode }}" == "no" ]; then
+          if [ "${{ github.event.inputs.run_mode }}" == "real_backup" ]; then
              # git push origin devops/deploy-dist # Users should customize this
              echo "skip_release=false" >> $GITHUB_ENV
           else
@@ -171,7 +171,7 @@ jobs:
         fi
 
     - name: Create Pull Request
-      if: ${{ github.event.inputs.debug_mode == 'no' && env.skip_release != 'true' }}
+      if: ${{ github.event.inputs.run_mode == 'real_backup' && env.skip_release != 'true' }}
       working-directory: deploy
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -180,7 +180,7 @@ jobs:
         echo "Auto PR logic requires custom branch configuration."
     
     - name: Create GitHub Release
-      if: ${{ github.event.inputs.debug_mode == 'no' && env.skip_release != 'true' }}
+      if: ${{ github.event.inputs.run_mode == 'real_backup' && env.skip_release != 'true' }}
       working-directory: notion-up
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

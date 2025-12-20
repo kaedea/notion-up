@@ -58,8 +58,9 @@ on:
     - cron: '0 22 * * 0' # Sundays at 22:00 UTC
 ```
 
-### Debug Modes
-The workflow includes granular debug modes:
+### Run Modes
+The workflow includes granular run modes:
+- `real_backup`: Standard production run (Export -> Cleanup -> PR -> Release).
 - `debug_exported_url`: Tests Notion API connectivity and export URL generation.
 - `debug_unzipping`: Skip the slow export and test the processing logic using the latest release ZIP.
 
