@@ -50,13 +50,13 @@ jobs:
     
     - name: Run notion backup
       if: github.event.inputs.debug_mode != 'debug_unzipping'
+      working-directory: notion-up
       env:
         NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
         NOTION_USERNAME: ${{ secrets.NOTION_USERNAME }}
         NOTION_PASSWORD: ${{ secrets.NOTION_PASSWORD }}
         NOTION_FILE_TOKEN: ${{ secrets.NOTION_FILE_TOKEN }}
       run: |
-        cd notion-up
         PYTHONPATH=./ python main.py \
           --action "all" \
           --output "build/exported" \
@@ -68,18 +68,18 @@ jobs:
     
     - name: Download latest release ZIP for unzipping debug
       if: github.event.inputs.debug_mode == 'debug_unzipping'
+      working-directory: notion-up
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        mkdir -p notion-up/build/exported
-        gh release download --pattern "*.zip" --dir notion-up/build/exported || echo "No release zip found, trying manual export..."
+        mkdir -p build/exported
+        gh release download --repo ${{ github.repository }} --pattern "*.zip" --dir build/exported || echo "No release zip found."
         
         # Identify the downloaded zip
-        LATEST_ZIP=$(find notion-up/build/exported -name "*.zip" | head -n 1)
+        LATEST_ZIP=$(find build/exported -name "*.zip" | head -n 1)
         if [ -n "$LATEST_ZIP" ]; then
           echo "Using ZIP: $LATEST_ZIP for debug_unzipping"
-          mv "$LATEST_ZIP" notion-up/build/exported/exported.zip
-          cd notion-up
+          mv "$LATEST_ZIP" build/exported/exported.zip
           PYTHONPATH=./ python main.py --action unzip --output build/exported --zip_files build/exported/exported.zip
         else
           echo "No release ZIP found. Please run with debug_mode=no or provide secrets."
@@ -88,8 +88,8 @@ jobs:
 
     - name: Process exported files
       if: github.event.inputs.debug_mode != 'debug_exported_url'
+      working-directory: notion-up
       run: |
-        cd notion-up
         echo "=== Unzipped content before cleanup ==="
         ls -R build/exported/
         
@@ -181,6 +181,7 @@ jobs:
     
     - name: Create GitHub Release
       if: ${{ github.event.inputs.debug_mode == 'no' && env.skip_release != 'true' }}
+      working-directory: notion-up
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -189,4 +190,4 @@ jobs:
           --title "Notion Backup $VERSION" \
           --notes "Automated backup" \
           --latest \
-          notion-up/build/archives/* || echo "Release creation failed"
+          build/archives/* || echo "Release creation failed"
