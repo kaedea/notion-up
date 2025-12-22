@@ -77,6 +77,8 @@ class NotionUp:
         print('Polling for export task: {}'.format(taskId))
         success_no_url_retries = 0
         wait_interval = 10
+        # Set a cutoff time (current time - 10 minutes buffer) to filter out stale exports
+        min_timestamp = int(time.time() * 1000) - (10 * 60 * 1000)
         max_retries = Config.wait_timeout() // wait_interval
 
         while True:
@@ -100,7 +102,7 @@ class NotionUp:
                 print(f'\n[DEBUG] Task success but exportURL missing. Checking getNotificationLog...')
                 try:
                     notification_res = NotionUp.requestPost('getNotificationLog', {'spaceId': spaceId} if spaceId else {})
-                    url = NotionUp._parse_notification_log(notification_res, spaceId)
+                    url = NotionUp._parse_notification_log(notification_res, spaceId, min_timestamp)
                 except Exception as e:
                     print(f'\n[DEBUG] Failed to check getNotificationLog: {e}')
 
@@ -115,7 +117,7 @@ class NotionUp:
                             'variant': 'no_grouping'
                         }
                         notification_res_v2 = NotionUp.requestPost('getNotificationLogV2', payload)
-                        url = NotionUp._parse_notification_log(notification_res_v2, spaceId)
+                        url = NotionUp._parse_notification_log(notification_res_v2, spaceId, min_timestamp)
                     except Exception as e:
                         print(f'\n[DEBUG] Failed to check getNotificationLogV2: {e}')
 
@@ -168,12 +170,18 @@ class NotionUp:
         return found_exports
 
     @staticmethod
-    def _parse_notification_log(response, spaceId=None):
+    def _parse_notification_log(response, spaceId=None, min_timestamp=0):
         found_exports = NotionUp._get_export_list(response, spaceId)
         if found_exports:
-            url = found_exports[0]['url']
-            print(f'\n[DEBUG] Found URL from notification log: {url}')
-            return url
+            # Filter exports older than min_timestamp
+            latest_export = found_exports[0]
+            if latest_export['timestamp'] >= min_timestamp:
+                url = latest_export['url']
+                print(f'\n[DEBUG] Found URL from notification log: {url}')
+                return url
+            else:
+                elapsed_hrs = (int(time.time() * 1000) - latest_export['timestamp']) / (1000 * 3600)
+                print(f'\n[DEBUG] Found export in log but it is too old ({elapsed_hrs:.2f} hours). Ignoring.')
         return None
 
     @staticmethod
